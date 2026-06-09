@@ -13,12 +13,12 @@ from googleapiclient.discovery import build
 app = Flask(__name__)
 
 LINE_CHANNEL_SECRET = os.environ.get('d6db7e24e858b02efa7ac18283551c10')
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('mBLk/aVJA8FX8D0m8yvlbDmebBsHnv/vXKC72RuIpxCn2nNBfZEKmmqGOZ2g0MFsGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqV1MU0NWvfk/L7AfVKV2KUXLtShj9B3pC/IWmf2vZo4QdB04t89/1O/w1cDnyilFU=')
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LmReeyRqWoQbwFCBQyMmkc1d4MVEHBRsJsHUd6nHtr69WSE3ev+9W1Tpe3ixoUYiGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqT7JtAdCfejYYAED4Ts/lxmxl1T1ApBKDxrd/hAveZVgdB04t89/1O/w1cDnyilFU=')
 GEMINI_API_KEY = os.environ.get('AIzaSyBUZGheV72YshPC0w5m10G_2P1Z1YE2fpM')
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 GOOGLE_CREDENTIALS = os.environ.get('GOOGLE_CREDENTIALS')
 
-line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+line_bot_api = LineBotApi(LmReeyRqWoQbwFCBQyMmkc1d4MVEHBRsJsHUd6nHtr69WSE3ev+9W1Tpe3ixoUYiGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqT7JtAdCfejYYAED4Ts/lxmxl1T1ApBKDxrd/hAveZVgdB04t89/1O/w1cDnyilFU=)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 client = genai.Client(api_key=GEMINI_API_KEY)
 
