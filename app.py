@@ -12,9 +12,9 @@ from googleapiclient.discovery import build
 
 app = Flask(__name__)
 
-LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET')
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+LINE_CHANNEL_SECRET = os.environ.get('d6db7e24e858b02efa7ac18283551c10')
+LINE_CHANNEL_ACCESS_TOKEN = os.environ.get('mBLk/aVJA8FX8D0m8yvlbDmebBsHnv/vXKC72RuIpxCn2nNBfZEKmmqGOZ2g0MFsGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqV1MU0NWvfk/L7AfVKV2KUXLtShj9B3pC/IWmf2vZo4QdB04t89/1O/w1cDnyilFU=')
+GEMINI_API_KEY = os.environ.get('AIzaSyBUZGheV72YshPC0w5m10G_2P1Z1YE2fpM')
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 GOOGLE_CREDENTIALS = os.environ.get('GOOGLE_CREDENTIALS')
 
