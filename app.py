@@ -18,7 +18,7 @@ GEMINI_API_KEY = os.environ.get('AIzaSyBUZGheV72YshPC0w5m10G_2P1Z1YE2fpM')
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID')
 GOOGLE_CREDENTIALS = os.environ.get('GOOGLE_CREDENTIALS')
 
-line_bot_api = LineBotApi(LmReeyRqWoQbwFCBQyMmkc1d4MVEHBRsJsHUd6nHtr69WSE3ev+9W1Tpe3ixoUYiGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqT7JtAdCfejYYAED4Ts/lxmxl1T1ApBKDxrd/hAveZVgdB04t89/1O/w1cDnyilFU=)
+line_bot_api = LineBotApi('LmReeyRqWoQbwFCBQyMmkc1d4MVEHBRsJsHUd6nHtr69WSE3ev+9W1Tpe3ixoUYiGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqT7JtAdCfejYYAED4Ts/lxmxl1T1ApBKDxrd/hAveZVgdB04t89/1O/w1cDnyilFU=')
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 client = genai.Client(api_key=GEMINI_API_KEY)
 
