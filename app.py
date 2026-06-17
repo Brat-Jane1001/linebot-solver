@@ -62,19 +62,20 @@ def callback():
         abort(400)
     return 'OK'
 
-# === 修正後的事件監聽區塊 ===
-@handler.add(MessageEvent)
+@handler.add(MessageEvent, content_type=TextMessageContent)
 def handle_text_message(event):
-    # 確保進來的是文字訊息，如果使用者傳貼圖或照片就直接跳過不處理
-    if not isinstance(event.message, TextMessageContent):
+    # 1. 安全檢查：如果沒有 reply_token，直接放棄不處理，避免 400 錯誤
+    if not event.reply_token:
         return
 
     user_id = event.source.user_id
     user_text = event.message.text
 
     try:
-        # === A. 紀錄學生提問 ===
-        log_chat(user_id, "student", user_text)
+        # === A. 儲存至 Supabase ===
+        supabase_client.table("chat_logs").insert({
+            "user_id": user_id, "role": "user", "message": user_text
+        }).execute()
 
         # === B. 呼叫 Gemini API ===
         response = gemini_client.models.generate_content(
@@ -87,22 +88,31 @@ def handle_text_message(event):
         )
         ai_reply = response.text
 
-        # === C. 紀錄 AI 回應 ===
-        log_chat(user_id, "ai", ai_reply)
+        # 如果 Gemini 吐回空字串，強迫給予預設文字，避免 LINE 400 錯誤
+        if not ai_reply or ai_reply.strip() == "":
+            ai_reply = "大腦思考中，請再試一次！"
+
+        # === C. 儲存 AI 回應 ===
+        supabase_client.table("chat_logs").insert({
+            "user_id": user_id, "role": "ai", "message": ai_reply
+        }).execute()
 
     except Exception as e:
         print(f"Error logic: {e}", file=sys.stderr)
         ai_reply = "系統引擎過熱中（發生錯誤），請稍後再試！"
 
-    # === D. 回傳給 LINE 使用者 ===
-    with ApiClient(line_config) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(
+    # === D. 傳送回 LINE (這是最容易產生 400 錯誤的地方) ===
+    try:
+        with ApiClient(line_config) as api_client:
+            messaging_api = MessagingApi(api_client)
+            # 確保 ReplyMessageRequest 裡面包的 messages 陣列格式完全正確
+            reply_request = ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[TextMessage(text=ai_reply)]
+                messages=[TextMessage(text=str(ai_reply))]  # 強制轉成字串，避免非文字型態
             )
-        )
+            messaging_api.reply_message(reply_request)
+    except Exception as line_error:
+        print(f"LINE Reply Error: {line_error}", file=sys.stderr)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
