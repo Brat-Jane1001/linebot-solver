@@ -33,125 +33,101 @@ app = Flask(__name__)
 # Environment Variables
 # =========================
 
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv(
-    "LINE_CHANNEL_ACCESS_TOKEN"
-)
-
-LINE_CHANNEL_SECRET = os.getenv(
-    "LINE_CHANNEL_SECRET"
-)
-
-GEMINI_API_KEY = os.getenv(
-    "GEMINI_API_KEY"
-)
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not LINE_CHANNEL_ACCESS_TOKEN:
-    raise ValueError(
-        "LINE_CHANNEL_ACCESS_TOKEN not found"
-    )
+    raise ValueError("LINE_CHANNEL_ACCESS_TOKEN not found")
 
 if not LINE_CHANNEL_SECRET:
-    raise ValueError(
-        "LINE_CHANNEL_SECRET not found"
-    )
+    raise ValueError("LINE_CHANNEL_SECRET not found")
 
 if not GEMINI_API_KEY:
-    raise ValueError(
-        "GEMINI_API_KEY not found"
-    )
+    raise ValueError("GEMINI_API_KEY not found")
 
 # =========================
 # LINE
 # =========================
 
-line_config = Configuration(
-    access_token=LINE_CHANNEL_ACCESS_TOKEN
-)
-
-handler = WebhookHandler(
-    LINE_CHANNEL_SECRET
-)
+line_config = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 # =========================
 # Gemini
 # =========================
 
-gemini_client = genai.Client(
-    api_key=GEMINI_API_KEY
-)
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # =========================
-# SQLite
+# SQLite (修正：將路徑改至環境通用的 /tmp 區確保寫入權限)
 # =========================
 
-DB_FILE = "f1_assistant.db"
+DB_FILE = "/tmp/f1_assistant.db"
 
 
 def init_db():
-
-    conn = sqlite3.connect(DB_FILE)
-
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS chat_logs(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id TEXT NOT NULL,
-        role TEXT NOT NULL,
-        message TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_logs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        conn.commit()
+        conn.close()
+        print("Database initialized successfully.", file=sys.stderr)
+    except Exception as db_err:
+        print(f"Database Init Error: {db_err}", file=sys.stderr)
 
 
 def save_chat(user_id, role, message):
-
-    conn = sqlite3.connect(DB_FILE)
-
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        INSERT INTO chat_logs
-        (user_id, role, message)
-        VALUES (?, ?, ?)
-        """,
-        (user_id, role, message)
-    )
-
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO chat_logs
+            (user_id, role, message)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, role, message)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as db_err:
+        print(f"Database Save Error: {db_err}", file=sys.stderr)
 
 
 def get_recent_history(user_id, limit=8):
-
-    conn = sqlite3.connect(DB_FILE)
-
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT role,message
-        FROM chat_logs
-        WHERE user_id=?
-        ORDER BY id DESC
-        LIMIT ?
-        """,
-        (user_id, limit)
-    )
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    rows.reverse()
-
-    return rows
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT role, message
+            FROM chat_logs
+            WHERE user_id=?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        rows.reverse()
+        return rows
+    except Exception as db_err:
+        print(f"Database Get History Error: {db_err}", file=sys.stderr)
+        return []
 
 
+# 啟動時建立資料庫與資料表
 init_db()
 
 # =========================
@@ -183,8 +159,11 @@ F1_SYSTEM_INSTRUCTION = """
 直接回答。
 回答控制在 100~200 字內。
 
-回答請簡潔、專業、
-適合 LINE 閱讀。
+【重要追加擴充功能】：
+6. 【即時賽況查詢】：若學生詢問最新的車手排名、車隊積分、或最近一場比賽的結果，請啟用你的聯網搜尋能力（Google Search Grounding），抓取最新真實數據。
+   ★排版限制★：千萬不要使用 Markdown 的表格符號（如 | 或 ---）！請統一使用「換行與純文字列表」來整齊排列（例如：1. 車手姓名 - 積分）。
+
+回答請簡潔、專業、適合 LINE 閱讀。
 """
 
 # =========================
@@ -193,24 +172,12 @@ F1_SYSTEM_INSTRUCTION = """
 
 @app.route("/callback", methods=["POST"])
 def callback():
-
-    signature = request.headers.get(
-        "X-Line-Signature"
-    )
-
-    body = request.get_data(
-        as_text=True
-    )
+    signature = request.headers.get("X-Line-Signature")
+    body = request.get_data(as_text=True)
 
     try:
-
-        handler.handle(
-            body,
-            signature
-        )
-
+        handler.handle(body, signature)
     except InvalidSignatureError:
-
         abort(400)
 
     return "OK"
@@ -220,44 +187,26 @@ def callback():
 # Message Handler
 # =========================
 
-@handler.add(
-    MessageEvent,
-    message=TextMessageContent
-)
+@handler.add(MessageEvent, message=TextMessageContent)
 def handle_text_message(event):
-
-    if event.reply_token == \
-       "00000000000000000000000000000000":
+    if not event.reply_token:
         return
 
-    user_id = getattr(
-        event.source,
-        "user_id",
-        "unknown"
-    )
+    if event.reply_token == "00000000000000000000000000000000":
+        return
 
+    user_id = getattr(event.source, "user_id", "unknown")
     user_text = event.message.text
 
     try:
+        # A. 儲存使用者最新提問
+        save_chat(user_id, "user", user_text)
 
-        save_chat(
-            user_id,
-            "user",
-            user_text
-        )
-
-        history = get_recent_history(
-            user_id,
-            limit=8
-        )
-
+        # B. 讀取最近歷史紀錄（帶入上下文讓 Gemini 擁有短期記憶）
+        history = get_recent_history(user_id, limit=8)
         context = ""
-
         for role, msg in history:
-
-            context += (
-                f"{role}: {msg}\n"
-            )
+            context += f"{role}: {msg}\n"
 
         prompt = f"""
 最近聊天紀錄：
@@ -269,83 +218,44 @@ def handle_text_message(event):
 {user_text}
 """
 
-        response = (
-            gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=(
-                        F1_SYSTEM_INSTRUCTION
-                    ),
-                    temperature=0.7,
-                    max_output_tokens=800
-                )
+        # C. 呼叫 Gemini 2.5
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=F1_SYSTEM_INSTRUCTION,
+                temperature=0.7,
+                max_output_tokens=800
             )
         )
 
-        ai_reply = getattr(
-            response,
-            "text",
-            None
-        )
+        ai_reply = getattr(response, "text", None)
 
-        if not ai_reply:
-
-            ai_reply = (
-                "🏎️ 暫時無法產生回覆，請稍後再試。"
-            )
+        if not ai_reply or ai_reply.strip() == "":
+            ai_reply = "🏎️ 暫時無法產生回覆，請稍後再試。"
 
         if len(ai_reply) > 4500:
+            ai_reply = ai_reply[:4500] + "\n\n...(內容過長已截斷)"
 
-            ai_reply = (
-                ai_reply[:4500]
-                + "\n\n...(內容過長已截斷)"
-            )
-
-        save_chat(
-            user_id,
-            "assistant",
-            ai_reply
-        )
+        # D. 儲存助手回應
+        save_chat(user_id, "assistant", ai_reply)
 
     except Exception as e:
+        print(f"Gemini Error: {e}", file=sys.stderr)
+        ai_reply = "🏎️ 系統引擎過熱中，請稍後再試！"
 
-        print(
-            f"Gemini Error: {e}",
-            file=sys.stderr
-        )
-
-        ai_reply = (
-            "🏎️ 系統引擎過熱中，請稍後再試！"
-        )
-
+    # E. 安全將回應送回 LINE
     try:
-
-        with ApiClient(
-            line_config
-        ) as api_client:
-
-            messaging_api = MessagingApi(
-                api_client
-            )
-
+        with ApiClient(line_config) as api_client:
+            messaging_api = MessagingApi(api_client)
             messaging_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[
-                        TextMessage(
-                            text=str(ai_reply)
-                        )
-                    ]
+                    messages=[TextMessage(text=str(ai_reply))]
                 )
             )
-
     except Exception as line_error:
-
-        print(
-            f"LINE Reply Error: {line_error}",
-            file=sys.stderr
-        )
+        print(f"LINE Reply Error: {line_error}", file=sys.stderr)
 
 
 # =========================
@@ -353,16 +263,15 @@ def handle_text_message(event):
 # =========================
 
 if __name__ == "__main__":
+    # 增加版本檢查日誌，啟動時能確認環境
+    try:
+        import linebot
+        import google.genai
+        print(f"--- ⚙️ 套件檢測版本 ---", file=sys.stderr)
+        print(f"LINE SDK: {linebot.__version__}", file=sys.stderr)
+        print(f"Gemini SDK: {google.genai.__version__}", file=sys.stderr)
+    except Exception:
+        pass
 
-    port = int(
-        os.environ.get(
-            "PORT",
-            5000
-        )
-    )
-
-    app.run(
-        host="0.0.0.0",
-        port=port
-    )
-```
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
