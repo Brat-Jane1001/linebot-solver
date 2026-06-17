@@ -9,12 +9,14 @@ from linebot.v3.messaging import (
     Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
+
+# 注意：新版 line-bot-sdk 要用 google-genai 呼叫
 from google import genai
 from google.genai import types
 
 app = Flask(__name__)
 
-# === 直接填入你提供的密鑰 ===
+# === 填入你提供的密鑰 ===
 LINE_CHANNEL_ACCESS_TOKEN = "LmReeyRqWoQbwFCBQyMmkc1d4MVEHBRsJsHUd6nHtr69WSE3ev+9W1Tpe3ixoUYiGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqT7JtAdCfejYYAED4Ts/lxmxl1T1ApBKDxrd/hAveZVgdB04t89/1O/w1cDnyilFU="
 LINE_CHANNEL_SECRET = "d6db7e24e858b02efa7ac18283551c10"
 GEMINI_API_KEY = "AIzaSyBUZGheV72YshPC0w5m10G_2P1Z1YE2fpM"
@@ -35,13 +37,12 @@ F1_SYSTEM_INSTRUCTION = """
 請保持熱情、專業，多使用賽車相關的生動比喻（如：進站、起跑線、格子旗），回答要簡潔，適合 LINE 手機介面閱讀。
 """
 
-# 定義儲存紀錄的函式（存成 CSV 格式，最方便你交作業分析）
+# 定義儲存紀錄的函式（存成 CSV 格式）
 def log_chat(user_id, role, message):
     file_exists = os.path.isfile("chat_log.csv")
     with open("chat_log.csv", mode="a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if not file_exists:
-            # 如果檔案不存在，先寫入欄位名稱
             writer.writerow(["時間", "使用者ID", "角色", "訊息內容"])
         
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -58,8 +59,13 @@ def callback():
         abort(400)
     return 'OK'
 
-@handler.add(MessageEvent, content_type=TextMessageContent)
+# === 修正後的事件監聽區塊 ===
+@handler.add(MessageEvent)
 def handle_text_message(event):
+    # 確保進來的是文字訊息，如果使用者傳貼圖或照片就直接跳過不處理
+    if not isinstance(event.message, TextMessageContent):
+        return
+
     user_id = event.source.user_id
     user_text = event.message.text
 
