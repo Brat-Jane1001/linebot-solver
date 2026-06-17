@@ -17,8 +17,8 @@ from google.genai import types
 app = Flask(__name__)
 
 # === 填入你提供的密鑰 ===
-LINE_CHANNEL_ACCESS_TOKEN = "LmReeyRqWoQbwFCBQyMmkc1d4MVEHBRsJsHUd6nHtr69WSE3ev+9W1Tpe3ixoUYiGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqT7JtAdCfejYYAED4Ts/lxmxl1T1ApBKDxrd/hAveZVgdB04t89/1O/w1cDnyilFU="
-LINE_CHANNEL_SECRET = "d6db7e24e858b02efa7ac18283551c10"
+LINE_CHANNEL_ACCESS_TOKEN =  os.environ.get('LINE_CHANNEL_ACCESS_TOKEN')
+LINE_CHANNEL_SECRET = os.environ.get('LINE_CHANNEL_SECRET')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 # 初始化 LINE 和 Gemini
