@@ -1,4 +1,4 @@
-```python
+python
 import os
 import sys
 import sqlite3
