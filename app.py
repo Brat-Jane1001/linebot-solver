@@ -19,7 +19,7 @@ app = Flask(__name__)
 # === 填入你提供的密鑰 ===
 LINE_CHANNEL_ACCESS_TOKEN = "LmReeyRqWoQbwFCBQyMmkc1d4MVEHBRsJsHUd6nHtr69WSE3ev+9W1Tpe3ixoUYiGkqiA3tBjhuBbM1bvZSWnYiMIh8ocisKBujsSx+piDqT7JtAdCfejYYAED4Ts/lxmxl1T1ApBKDxrd/hAveZVgdB04t89/1O/w1cDnyilFU="
 LINE_CHANNEL_SECRET = "d6db7e24e858b02efa7ac18283551c10"
-GEMINI_API_KEY = "AIzaSyBUZGheV72YshPC0w5m10G_2P1Z1YE2fpM"
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 # 初始化 LINE 和 Gemini
 line_config = Configuration(access_token=LINE_CHANNEL_ACCESS_TOKEN)
